@@ -70,30 +70,49 @@ def return_full_url(url, sub=False, slow_mode=False):
         'ignoreerrors': True,
         'quiet': True,
         'no_warnings': True,
-        'format_sort': ['res:360'][0] if slow_mode else ['res:1080', 'res:720', 'res:480', 'res:360'][0],
+        'format': 'best[height<=360]' if slow_mode else 'best[height<=1080]',
         'socket_timeout': 10,
         'retries': 3
     }
 
     try:
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            result = ydl.extract_info(url, download=False)
-            
-        if not result:
-            raise ValueError("No video information found")
+            try:
+                # First try to extract info
+                result = ydl.extract_info(url, download=False)
+                if not result:
+                    logger.error("No video information found")
+                    return None
 
-        video = result.get('entries', [result])[0]
-        if not video:
-            raise ValueError("No video found in result")
+                # Handle both single videos and playlists
+                video = result.get('entries', [result])[0]
+                if not video:
+                    logger.error("No video found in result")
+                    return None
 
-        video_url = video.get('url')
-        if not video_url:
-            raise ValueError("No URL found in video info")
+                # Get the URL and verify it
+                video_url = video.get('url')
+                if not video_url:
+                    formats = video.get('formats', [])
+                    if formats:
+                        video_url = formats[-1].get('url')
+                    
+                if not video_url:
+                    logger.error("No playable URL found")
+                    return None
 
-        return video_url
+                logger.info(f"Successfully extracted video URL for {url}")
+                return video_url
+
+            except youtube_dl.utils.DownloadError as e:
+                logger.error(f"YouTube-DL download error: {str(e)}")
+                return None
+            except youtube_dl.utils.ExtractorError as e:
+                logger.error(f"YouTube-DL extractor error: {str(e)}")
+                return None
 
     except Exception as e:
-        logger.error(f"Error extracting video URL: {str(e)}")
+        logger.error(f"Unexpected error extracting video URL: {str(e)}")
         return None
 
 

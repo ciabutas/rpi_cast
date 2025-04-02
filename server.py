@@ -281,4 +281,16 @@ def webstate():
     logger.debug("Running state as been asked : "+currentState)
     return currentState
 
+@app.route('/health/youtube')
+def youtube_health_check():
+    test_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"  # Test video
+    try:
+        result = return_full_url(test_url, sub=False, slow_mode=False)
+        if result:
+            return "YouTube extraction working"
+        return "YouTube extraction failed", 500
+    except Exception as e:
+        logger.error(f"YouTube health check failed: {str(e)}")
+        return f"YouTube health check failed: {str(e)}", 500
+
 run(app, reloader=False, host='0.0.0.0', debug=True, quiet=True, port=2020)

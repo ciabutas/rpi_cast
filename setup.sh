@@ -90,6 +90,12 @@ then
   exit 0
 fi
 
+# Update yt-dlp regularly
+echo "0 0 * * * pip install -U yt-dlp" | crontab -
+
+# Initial installation
+pip install -U yt-dlp
+
 echo ""
 echo "============================================================"
 echo ""
