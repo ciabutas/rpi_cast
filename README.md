@@ -3,10 +3,6 @@
 Cast videos from mobile devices or computers to your TV.
 
 
-[![Android app on Google Play](https://developer.android.com/images/brand/en_app_rgb_wo_60.png)](https://play.google.com/store/apps/details?id=com.kiwiidev.raspberrycast)
-[![Extension for Chrome](https://developer.chrome.com/webstore/images/ChromeWebStore_BadgeWBorder_v2_206x58.png)](https://chrome.google.com/webstore/detail/raspberrycast/aikmhmnmlebhcjjdbjilohbpfljioeak)
-[![Extension for Firefox](https://raw.githubusercontent.com/vincelwt/RaspberryCast/master/images/firefox.png)](https://addons.mozilla.org/firefox/addon/raspberrycast/)
-
 ## Supported services
 Works with all youtube-dl supported websites: http://rg3.github.io/youtube-dl/supportedsites.html (YouTube, SoundCloud, Dailymotion, Vimeo, etc...) and also any direct link to mp3, mp4, avi and mkv file.
 
@@ -15,7 +11,7 @@ You can also cast playlists from Youtube or Soundcloud.
 ## How to install (Raspberry Pi side)
 
 ```
-wget https://raw.githubusercontent.com/ciabutas/RaspberryCast/master/setup.sh && sudo sh setup.sh
+wget https://raw.githubusercontent.com/ciabutas/rpi_cast/master/setup.sh && sudo sh setup.sh
 ```
 That's it.
 
@@ -24,10 +20,10 @@ The installation script will:
 - Autostart RaspberryCast at boot (added to /etc/rc.local)
 - Reboot
 
-You can review the [install script](https://github.com/ciabutas/RaspberryCast/blob/master/setup.sh).
+You can review the [install script](https://github.com/ciabutas/rpi_cast/blob/master/setup.sh).
 
 # Remote control (mobile devices)
-![The remote on Android](https://raw.githubusercontent.com/vincelwt/RaspberryCast/master/images/android.png)
+![The remote on Android](https://raw.githubusercontent.com/ciabutas/rpi_cast/master/images/android.png)
 
 On any device connected to the same network as you Pi, you can visit the page:
 ```
