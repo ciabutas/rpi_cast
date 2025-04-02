@@ -1,8 +1,9 @@
-import youtube_dl
+import yt_dlp as youtube_dl
 import os
 import threading
 import logging
 import json
+from pathlib import Path
 logger = logging.getLogger("RaspberryCast")
 volume = 0
 
@@ -50,64 +51,50 @@ adding to queue.')
 
 
 def return_full_url(url, sub=False, slow_mode=False):
-    logger.debug("Parsing source url for "+url+" with subs :"+str(sub))
+    logger.debug(f"Parsing source url for {url} with subs: {sub}")
 
-    if ((url[-4:] in (".avi", ".mkv", ".mp4", ".mp3")) or
-            (sub) or (".googlevideo.com/" in url)):
-        logger.debug('Direct video URL, no need to use youtube-dl.')
-        return url
-
-    ydl = youtube_dl.YoutubeDL(
-        {
-            'logger': logger,
-            'noplaylist': True,
-            'ignoreerrors': True,
-        })  # Ignore errors in case of error in long playlists
-    with ydl:  # Downloading youtub-dl infos. We just want to extract the info
-        result = ydl.extract_info(url, download=False)
-
-    if result is None:
-        logger.error(
-            "Result is none, returning none. Cancelling following function.")
+    # Validate URL
+    if not url:
+        logger.error("Empty URL provided")
         return None
 
-    if 'entries' in result:  # Can be a playlist or a list of videos
-        video = result['entries'][0]
-    else:
-        video = result  # Just a video
+    # Handle direct media files
+    media_extensions = (".avi", ".mkv", ".mp4", ".mp3", ".webm")
+    if url.lower().endswith(media_extensions) or sub or ".googlevideo.com/" in url:
+        logger.debug('Direct video URL, no need to use yt-dlp')
+        return url
 
-    if "youtu" in url:
-        if slow_mode:
-            for i in video['formats']:
-                if i['format_id'] == "18":
-                    logger.debug(
-                        "Youtube link detected, extracting url in 360p")
-                    return i['url']
-        else:
-            logger.debug('''CASTING: Youtube link detected.
-Extracting url in maximal quality.''')
-            for fid in ('22', '18', '36', '17'):
-                for i in video['formats']:
-                    if i['format_id'] == fid:
-                        logger.debug(
-                            'CASTING: Playing highest video quality ' +
-                            i['format_note'] + '(' + fid + ').'
-                        )
-                        return i['url']
-    elif "vimeo" in url:
-        if slow_mode:
-            for i in video['formats']:
-                if i['format_id'] == "http-360p":
-                    logger.debug("Vimeo link detected, extracting url in 360p")
-                    return i['url']
-        else:
-            logger.debug(
-                'Vimeo link detected, extracting url in maximal quality.')
-            return video['url']
-    else:
-        logger.debug('''Video not from Youtube or Vimeo.
-Extracting url in maximal quality.''')
-        return video['url']
+    ydl_opts = {
+        'logger': logger,
+        'noplaylist': True,
+        'ignoreerrors': True,
+        'quiet': True,
+        'no_warnings': True,
+        'format_sort': ['res:360'][0] if slow_mode else ['res:1080', 'res:720', 'res:480', 'res:360'][0],
+        'socket_timeout': 10,
+        'retries': 3
+    }
+
+    try:
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            result = ydl.extract_info(url, download=False)
+            
+        if not result:
+            raise ValueError("No video information found")
+
+        video = result.get('entries', [result])[0]
+        if not video:
+            raise ValueError("No video found in result")
+
+        video_url = video.get('url')
+        if not video_url:
+            raise ValueError("No URL found in video info")
+
+        return video_url
+
+    except Exception as e:
+        logger.error(f"Error extracting video URL: {str(e)}")
+        return None
 
 
 def playlist(url, cast_now, config):
@@ -125,13 +112,15 @@ def playlist(url, cast_now, config):
 
 def playlistToQueue(url, config):
     logger.info("Adding every videos from playlist to queue.")
-    ydl = youtube_dl.YoutubeDL(
-        {
-            'logger': logger,
-            'extract_flat': 'in_playlist',
-            'ignoreerrors': True,
-        })
-    with ydl:  # Downloading youtub-dl infos
+    ydl_opts = {
+        'logger': logger,
+        'extract_flat': 'in_playlist',
+        'ignoreerrors': True,
+        'quiet': True,
+        'no_warnings': True
+    }
+    
+    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
         result = ydl.extract_info(url, download=False)
         for i in result['entries']:
             logger.info("queuing video")
@@ -204,3 +193,14 @@ def setVolume(vol):
         volume += 300
     if vol == "less":
         volume -= 300
+
+
+def cleanup_files():
+    """Clean up temporary files"""
+    patterns = ['*.srt', '*.tmp', '*.part']
+    for pattern in patterns:
+        for file in Path('.').glob(pattern):
+            try:
+                file.unlink()
+            except Exception as e:
+                logger.warning(f"Failed to delete {file}: {e}")

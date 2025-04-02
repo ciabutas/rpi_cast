@@ -1,4 +1,4 @@
-# RaspberryCast 3.1
+# RaspberryCast 3.0
 > Transform your Raspberry Pi into a streaming device.
 Cast videos from mobile devices or computers to your TV.
 
@@ -15,7 +15,7 @@ You can also cast playlists from Youtube or Soundcloud.
 ## How to install (Raspberry Pi side)
 
 ```
-wget https://raw.githubusercontent.com/vincelwt/RaspberryCast/master/setup.sh && sudo sh setup.sh
+wget https://raw.githubusercontent.com/ciabutas/RaspberryCast/master/setup.sh && sudo sh setup.sh
 ```
 That's it.
 
@@ -24,7 +24,7 @@ The installation script will:
 - Autostart RaspberryCast at boot (added to /etc/rc.local)
 - Reboot
 
-You can review the [install script](https://github.com/vincelwt/RaspberryCast/blob/master/setup.sh).
+You can review the [install script](https://github.com/ciabutas/RaspberryCast/blob/master/setup.sh).
 
 # Remote control (mobile devices)
 ![The remote on Android](https://raw.githubusercontent.com/vincelwt/RaspberryCast/master/images/android.png)
@@ -53,7 +53,7 @@ Works on Linux, Mac OS, and Windows (Python needed)
 **Download**
 
 ```
-wget https://raw.githubusercontent.com/vincelwt/RaspberryCast/master/rcast.py
+wget https://raw.githubusercontent.com/ciabutas/RaspberryCast/master/rcast.py
 ```
 
 **Usage**

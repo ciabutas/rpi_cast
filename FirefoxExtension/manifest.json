@@ -1,24 +1,33 @@
 {
+   "manifest_version": 3,
+   "name": "RaspberryCast",
+   "version": "1.4.1",
+   "description": "Share videos to Rpi",
    "background": {
-      "scripts": [ "js/jquery-3.3.1.min.js", "js/background.js", "js/popup.js" ]
+      "scripts": ["js/background.js"],
+      "type": "module"
    },
-   "browser_action": {
+   "action": {
       "default_icon": "20.png",
       "default_title": "RasperryCast remote",
       "default_popup": "popup.html"
    },
-   "description": "Share videos to Rpi",
    "icons": {
-      "128": "128.png",
       "16": "16.png",
-      "48": "48.png"
+      "48": "48.png",
+      "128": "128.png"
    },
    "options_ui": {
-     "page": "options.html"
+      "page": "options.html",
+      "open_in_tab": true
    },
-
-   "manifest_version": 2,
-   "name": "RaspberryCast",
-   "permissions": [ "contextMenus", "tabs", "notifications" ],
-   "version": "1.4.0"
+   "permissions": [
+      "storage",
+      "contextMenus",
+      "tabs",
+      "notifications"
+   ],
+   "host_permissions": [
+      "http://*/"
+   ]
 }

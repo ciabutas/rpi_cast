@@ -1,5 +1,39 @@
 #!/bin/sh
 
+# Check Python version
+python_version=$(python -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')
+if (( $(echo "$python_version < 3.6" | bc -l) )); then
+    echo "Python 3.6 or higher is required. Current version: $python_version"
+    exit 1
+fi
+
+# Check if running on Raspberry Pi
+if ! grep -q "Raspberry Pi" /proc/cpuinfo; then
+    echo "Warning: This script is designed for Raspberry Pi."
+    read -p "Continue anyway? (y/n) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
+fi
+
+# Check for required commands
+for cmd in pip git wget omxplayer; do
+    if ! command -v $cmd >/dev/null 2>&1; then
+        echo "Required command not found: $cmd"
+        echo "Installing required packages..."
+        apt-get update
+        apt-get install -y python3-pip git wget omxplayer libnss-mdns fbi
+        break
+    fi
+done
+
+# Backup existing configuration
+if [ -f "/home/$USER/RaspberryCast/raspberrycast.conf" ]; then
+    echo "Backing up existing configuration..."
+    cp "/home/$USER/RaspberryCast/raspberrycast.conf" "/home/$USER/raspberrycast.conf.backup"
+fi
+
 if [ `id -u` -ne 0 ]
 then
   echo "Please run this script with root privileges!"
@@ -48,7 +82,7 @@ then
   exit 0
 fi
 
-pip install youtube-dl bottle livestreamer
+pip install yt-dlp bottle livestreamer
 
 if [ "$?" = "1" ]
 then
@@ -63,7 +97,7 @@ echo "Cloning project from GitHub.."
 echo ""
 echo "============================================================"
 
-su - $USER -c "git clone https://github.com/vincelwt/RaspberryCast.git"
+su - $USER -c "git clone https://github.com/ciabutas/RaspberryCast.git"
 chmod +x ./RaspberryCast/RaspberryCast.sh
 
 echo ""

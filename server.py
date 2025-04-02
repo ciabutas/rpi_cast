@@ -1,35 +1,82 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import logging
 import os
 import sys
 import json
-try:
-    # this works in Python3
-    from urllib.request import urlretrieve
-except ImportError:
-    # this works in Python2
-    from urllib import urlretrieve
-from bottle import Bottle, SimpleTemplate, request, response, \
-                   template, run, static_file
-from process import launchvideo, queuevideo, playlist, \
-                    setState, getState, setVolume
+from pathlib import Path
+from bottle import Bottle, response
+import socket
+
+# Configure logging with rotation
+log_file = 'RaspberryCast.log'
+max_bytes = 10 * 1024 * 1024  # 10MB
+backup_count = 3
+
+handler = logging.handlers.RotatingFileHandler(
+    log_file, maxBytes=max_bytes, backupCount=backup_count
+)
+
+logging.basicConfig(
+    handlers=[handler],
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt='%Y-%m-%d %H:%M:%S',
+    level=logging.DEBUG
+)
+
+# Add health check endpoint
+@app.route('/health')
+def health_check():
+    return {"status": "healthy", "version": "3.0"}
+
+# Add error handling
+@app.error(500)
+def error_handler(error):
+    logger.error(f"Internal error: {error}")
+    response.content_type = 'application/json'
+    return json.dumps({'error': str(error)})
+
+# Check if port is available
+def check_port(port):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.bind(('localhost', port))
+        sock.close()
+        return True
+    except:
+        logger.error(f"Port {port} is already in use")
+        return False
+
+# Initialize configuration with defaults
+DEFAULT_CONFIG = {
+    "slow_mode": False,
+    "new_log": True,
+    "pi_hostname": "raspberrypi",
+    "width": "",
+    "height": "",
+    "subtitle_search": False,
+    "port": 2020
+}
+
+def load_config(config_file):
+    config_path = Path(config_file)
+    if config_path.exists():
+        try:
+            with open(config_path) as f:
+                user_config = json.load(f)
+                return {**DEFAULT_CONFIG, **user_config}
+        except json.JSONDecodeError:
+            logger.error(f"Invalid JSON in {config_file}, using defaults")
+            return DEFAULT_CONFIG
+    else:
+        logger.warning(f"Config file {config_file} not found, using defaults")
+        return DEFAULT_CONFIG
 
 if len(sys.argv) > 1:
     config_file = sys.argv[1]
 else:
     config_file = 'raspberrycast.conf'
-with open(config_file) as f:
-      config = json.load(f)
-
-# Setting log
-logging.basicConfig(
-    filename='RaspberryCast.log',
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt='%m-%d %H:%M:%S',
-    level=logging.DEBUG
-)
-logger = logging.getLogger("RaspberryCast")
+config = load_config(config_file)
 
 # Creating handler to print messages on stdout
 root = logging.getLogger()

@@ -3,11 +3,22 @@
 	<head>
 		<meta charset="utf-8">
 		<title>Options</title>
+		<style>
+			#message {
+				display: none;
+				background: #4CAF50;
+				color: white;
+				padding: 10px;
+				margin: 10px 0;
+				border-radius: 4px;
+			}
+		</style>
 		<script src="js/options.js"></script>
 	</head>
 	<body>
 		<center>
 			<h1><img src="128.png" width="30px" style="margin-right: 10px;"/>RaspberryCast</h1>
+			<div id="message"></div>
 			<form name="settings">
 				<h2>Options :</h2>
 				<p>Ip adress (ex: 192.168.1.10) :</p> <input type="text" id="raspip" placeholder="Enter the IP"/>
