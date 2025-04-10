@@ -1,143 +1,55 @@
 #!/bin/sh
 
 # Check Python version
-python_version=$(python -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')
+python_version=$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')
 if (( $(echo "$python_version < 3.6" | bc -l) )); then
     echo "Python 3.6 or higher is required. Current version: $python_version"
     exit 1
 fi
 
-# Check if running on Raspberry Pi
-if ! grep -q "Raspberry Pi" /proc/cpuinfo; then
-    echo "Warning: This script is designed for Raspberry Pi."
-    read -p "Continue anyway? (y/n) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        exit 1
-    fi
+# Install required system packages
+apt-get update
+apt-get install -y python3-full python3-venv git wget vlc libnss-mdns fbi python3-dev
+
+# Create virtual environment
+echo "Creating Python virtual environment..."
+python3 -m venv /opt/raspberrycast_venv
+
+# Activate virtual environment and install Python packages
+. /opt/raspberrycast_venv/bin/activate
+pip install --no-cache-dir yt-dlp bottle livestreamer
+
+# Update yt-dlp regularly (using absolute path to pip in venv)
+echo "0 0 * * * /opt/raspberrycast_venv/bin/pip install -U yt-dlp" | crontab -
+
+# Initial yt-dlp installation
+/opt/raspberrycast_venv/bin/pip install -U yt-dlp
+
+# Clone project if not already done
+if [ ! -d "/home/$USER/RaspberryCast" ]; then
+    su - $USER -c "git clone https://github.com/ciabutas/rpi_cast.git /home/$USER/RaspberryCast"
 fi
 
-# Check for required commands
-for cmd in pip git wget omxplayer; do
-    if ! command -v $cmd >/dev/null 2>&1; then
-        echo "Required command not found: $cmd"
-        echo "Installing required packages..."
-        apt-get update
-        apt-get install -y python3-pip git wget omxplayer libnss-mdns fbi
-        break
-    fi
-done
+# Create service file for systemd
+cat > /etc/systemd/system/raspberrycast.service << EOF
+[Unit]
+Description=RaspberryCast Service
+After=network.target
 
-# Backup existing configuration
-if [ -f "/home/$USER/RaspberryCast/raspberrycast.conf" ]; then
-    echo "Backing up existing configuration..."
-    cp "/home/$USER/RaspberryCast/raspberrycast.conf" "/home/$USER/raspberrycast.conf.backup"
-fi
+[Service]
+Type=simple
+User=$USER
+WorkingDirectory=/home/$USER/RaspberryCast
+Environment=PATH=/opt/raspberrycast_venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/opt/raspberrycast_venv/bin/python server.py
+Restart=always
 
-if [ `id -u` -ne 0 ]
-then
-  echo "Please run this script with root privileges!"
-  echo "Try again with sudo."
-  exit 0
-fi
+[Install]
+WantedBy=multi-user.target
+EOF
 
-echo "This script will install RaspberryCast"
+# Enable and start the service
+systemctl enable raspberrycast
+systemctl start raspberrycast
 
-read -p "Which user do you want to install RaspberryCast as? (Leave blank to set to default): " USER
-
-if ! [ -n "$USER" ]; then
-    echo "Setting user to default value 'pi'."
-    USER="pi"
-fi
-
-if ! getent passwd $USER > /dev/null 2>&1; then
-    echo "User $USER does not exist. Exiting."
-    exit
-fi
-
-echo "Your system will be rebooted on completion"
-echo "Do you wish to continue? (y/n)"
-
-while true; do
-  read -p "" yn
-  case $yn in
-      [Yy]* ) break;;
-      [Nn]* ) exit 0;;
-      * ) echo "Please answer with Yes or No [y|n].";;
-  esac
-done
-echo ""
-echo "============================================================"
-echo ""
-echo "Installing necessary dependencies... (This could take a while)"
-echo ""
-echo "============================================================"
-
-apt-get install -y lsof python-pip git wget omxplayer libnss-mdns fbi
-echo "============================================================"
-
-if [ "$?" = "1" ]
-then
-  echo "An unexpected error occured during apt-get!"
-  exit 0
-fi
-
-pip install yt-dlp bottle livestreamer
-
-if [ "$?" = "1" ]
-then
-  echo "An unexpected error occured during pip install!"
-  exit 0
-fi
-
-# Update yt-dlp regularly
-echo "0 0 * * * pip install -U yt-dlp" | crontab -
-
-# Initial installation
-pip install -U yt-dlp
-
-echo ""
-echo "============================================================"
-echo ""
-echo "Cloning project from GitHub.."
-echo ""
-echo "============================================================"
-
-su - $USER -c "git clone https://github.com/ciabutas/rpi_cast.git"
-chmod +x ./RaspberryCast/RaspberryCast.sh
-
-echo ""
-echo "============================================================"
-echo ""
-echo "Adding project to startup sequence and custom options"
-echo ""
-echo "============================================================"
-
-#Gives right to all user to get out of screen standby
-chmod 666 /dev/tty1
-
-#Add to rc.local startup
-sed -i '$ d' /etc/rc.local
-echo "su - $USER -c \"cd ./RaspberryCast/ && ./RaspberryCast.sh start\"" >> /etc/rc.local
-echo "exit 0" >> /etc/rc.local
-
-#Adding right to current pi user to shutdown
-chmod +s /sbin/shutdown
-
-#Adding right to sudo fbi without password
-echo "$USER ALL = (root) NOPASSWD: /usr/bin/fbi" >> /etc/sudoers
-
-rm setup.sh
-
-echo "============================================================"
-echo "Setup was successful."
-echo "Do not delete the 'RaspberryCast' folder as it contains all application data!"
-echo "Rebooting system now..."
-echo "============================================================"
-
-sleep 2
-
-#Reboot to ensure cleaness of Pi memory and displaying of log
-reboot
-
-exit 0
+echo "Installation complete!"

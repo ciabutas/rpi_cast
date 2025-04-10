@@ -16,10 +16,11 @@ if [ $1 = "start" ]; then
 	echo "Checking for updates."
 	git pull
 	echo "Starting RaspberryCast server."
-	./server.py &
+	# Use the Python from virtual environment
+	/opt/raspberrycast_venv/bin/python server.py &
 	echo "Done."
 	exit
-elif [ $1 = "stop" ] ; then
+elif [ $1 = "stop" ]; then
 	if [ `id -u` -ne 0 ]
 	then
 		echo "Please start this script with root privileges!"
@@ -27,8 +28,8 @@ elif [ $1 = "stop" ] ; then
 		exit 0
 	fi
 	echo "Killing RaspberryCast..."
-	killall omxplayer.bin >/dev/null 2>&1
-	killall python >/dev/null 2>&1
+	killall vlc >/dev/null 2>&1
+	pkill -f "python server.py" >/dev/null 2>&1
 	kill $(lsof -t -i :2020) >/dev/null 2>&1
 	rm *.srt >/dev/null 2>&1
 	echo "Done."
