@@ -47,7 +47,7 @@ def check_port(port):
         logger.error(f"Port {port} is already in use")
         return False
 
-# Initialize configuration with defaults
+# Current configuration handling is scattered
 DEFAULT_CONFIG = {
     "slow_mode": False,
     "new_log": True,
@@ -58,19 +58,26 @@ DEFAULT_CONFIG = {
     "port": 2020
 }
 
-def load_config(config_file):
-    config_path = Path(config_file)
-    if config_path.exists():
+# Should create a proper config manager:
+class ConfigManager:
+    def __init__(self, config_file='rpi_cast.conf'):
+        self.config_file = config_file
+        self.config = self.load_config()
+
+    def load_config(self):
         try:
-            with open(config_path) as f:
-                user_config = json.load(f)
-                return {**DEFAULT_CONFIG, **user_config}
-        except json.JSONDecodeError:
-            logger.error(f"Invalid JSON in {config_file}, using defaults")
-            return DEFAULT_CONFIG
-    else:
-        logger.warning(f"Config file {config_file} not found, using defaults")
-        return DEFAULT_CONFIG
+            with open(self.config_file) as f:
+                return {**DEFAULT_CONFIG, **json.load(f)}
+        except (IOError, json.JSONDecodeError) as e:
+            logger.warning(f"Failed to load config: {e}")
+            return DEFAULT_CONFIG.copy()
+
+    def save_config(self):
+        try:
+            with open(self.config_file, 'w') as f:
+                json.dump(self.config, f, indent=2)
+        except IOError as e:
+            logger.error(f"Failed to save config: {e}")
 
 if len(sys.argv) > 1:
     config_file = sys.argv[1]
@@ -126,7 +133,11 @@ def remote():
 
 @app.route('/stream')
 def stream():
-    url = request.query['url']
+    url = request.query['url']  # Missing validation
+    # Should add:
+    if not url or not isinstance(url, str):
+        return json.dumps({'error': 'Invalid URL'}), 400
+
     logger.debug('Received URL to cast: '+url)
 
     if 'slow' in request.query:
@@ -293,4 +304,6 @@ def youtube_health_check():
         logger.error(f"YouTube health check failed: {str(e)}")
         return f"YouTube health check failed: {str(e)}", 500
 
-run(app, reloader=False, host='0.0.0.0', debug=True, quiet=True, port=2020)
+debug_mode = os.environ.get('DEBUG', 'False').lower() == 'true'
+port = int(os.environ.get('PORT', 2020))
+run(app, reloader=False, host='0.0.0.0', debug=debug_mode, quiet=True, port=port)

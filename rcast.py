@@ -151,6 +151,15 @@ log("Do not close this program while playing the file")
 log("Press Ctrl+C to stop")
 log("-----------------------------")
 
-urllib2.urlopen(full_url).read()
+# Missing proper error handling for network operations
+try:
+    urllib2.urlopen(full_url).read()
+except urllib2.URLError as e:
+    log(f"Failed to connect to server: {e}")
+    sys.exit(1)
+except Exception as e:
+    log(f"Unexpected error: {e}")
+    sys.exit(1)
+
 # We don't want to quit directly, pause until Ctrl+C
 signal.pause()

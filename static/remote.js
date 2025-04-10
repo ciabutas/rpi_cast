@@ -32,46 +32,42 @@ function showHistory() {
 	$( "#history-div" ).toggle("fast");
 }
 
+function addToHistory(url) {
+    if (storageAvailable('localStorage')) {
+        try {
+            let historyArray = JSON.parse(localStorage.getItem('history')) || [];
+            url = url.replace(/\"/g, "");
+            
+            if (!historyArray.includes(url)) {
+                historyArray.push(url);
+            }
+            
+            localStorage.setItem('history', JSON.stringify(historyArray));
+        } catch (e) {
+            console.error('Failed to update history:', e);
+        }
+    }
+}
+
 function mkrequest(url, response) {
-	try {
-		var newURL = document.location.origin+url;
-		if (response == 1 ) {
-			message("Trying to get video stream URL. Please wait ~10 seconds.", 0);
-		} else if (response == 2 ) {
-			message("Trying to add video to queue. ", 0);
-		} else if (response == 3 ) {
-			message("Trying to program shutdown. ", 0);
-		}
-		
-		var req = new XMLHttpRequest();
-		req.open('GET', newURL, true);
-		req.onreadystatechange = function (aEvt) {
-			if (req.readyState == 4) {
-				if (req.status == 200) {
-					if (req.responseText == "1") {
-						if (response == 1) {
-							message("Success! Video should now be playing.", 1);	
-						} else if (response == 2) {
-							message("Success! Video has been added to queue.", 1);	
-						} else if (response == 3) {
-							message("Success! Shutdown has been successfully scheduled.", 1);	
-						} else if (response == 4) {
-							message("Success! Shutdown has been cancelled.", 1);	
-						}
-						
-					} else {
-						message("An error occured during the treatment of the demand. Please make sure the link/action is compatible", 2);
-					}
-				} else {
-					message("Error during connecting requesting from server !", 2);
-				}
-			}
-		};
-		req.send(null);
-	} 
-	catch(err) {
-		message("Error! Make sure the IP and port is correct, and that the server is running.")
-	}
+    const timeout = 30000; // 30 seconds
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+        
+        fetch(document.location.origin + url, { signal: controller.signal })
+            .then(response => response.json())
+            .then(data => {
+                clearTimeout(timeoutId);
+                handleResponse(data, response);
+            })
+            .catch(error => {
+                clearTimeout(timeoutId);
+                message("Request failed: " + error.message, 2);
+            });
+    } catch (e) {
+        message("Request failed: " + e.message, 2);
+    }
 }
 
 $(function() {

@@ -196,9 +196,27 @@ def playWithOMX(url, sub, width="", height="", new_log=False):
                     os.system("sudo fbi -T 1 -a --noverbose images/ready.jpg")
 
 
+def playWithVLC(url, sub, width="", height="", new_log=False):
+    logger.info("Starting VLC now.")
+    
+    setState("1")
+    if sub:
+        os.system(
+            f"cvlc --fullscreen '{url}' --sub-file subtitle.srt"
+        )
+    elif url is not None:
+        os.system(
+            f"cvlc --fullscreen '{url}'"
+        )
+
+
 def setState(state):
     # Write to file so it can be accessed from everywhere
-    os.system("echo "+state+" > state.tmp")
+    try:
+        with open('state.tmp', 'w') as f:
+            f.write(str(state))
+    except IOError as e:
+        logger.error(f"Failed to write state: {e}")
 
 
 def getState():
