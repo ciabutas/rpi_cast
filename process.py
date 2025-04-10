@@ -143,17 +143,18 @@ def playlistToQueue(url, config):
 
 
 def playWithVLC(url, sub, width="", height="", new_log=False):
-    logger.info("Starting VLC now.")
+    logger.info("Starting video playback...")
     
     setState("1")
+    
+    # Build the command with proper escaping
     if sub:
-        os.system(
-            f"cvlc --fullscreen '{url}' --sub-file subtitle.srt"
-        )
-    elif url is not None:
-        os.system(
-            f"cvlc --fullscreen '{url}'"
-        )
+        cmd = f"omxplayer --subtitles subtitle.srt '{url}'"
+    else:
+        cmd = f"omxplayer '{url}'"
+    
+    # Execute the command
+    os.system(cmd)
 
     if getState() != "2":  # In case we are again in the launchvideo function
         setState("0")

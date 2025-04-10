@@ -1,16 +1,34 @@
 #!/bin/sh
 
+# Store the script path
+SCRIPT_PATH="$0"
+
+# Function to cleanup and exit
+cleanup() {
+    local exit_code=$1
+    echo "Cleaning up..."
+    rm -f "$SCRIPT_PATH"
+    exit "$exit_code"
+}
+
+# Error handler
+handle_error() {
+    echo "Error occurred during installation at line $1"
+    cleanup 1
+}
+
+# Set error handler
+trap 'handle_error $LINENO' ERR
+
 # Check Python version
 python_version=$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')
 if (( $(echo "$python_version < 3.6" | bc -l) )); then
     echo "Python 3.6 or higher is required. Current version: $python_version"
-    exit 1
+    cleanup 1
 fi
 
 # Install required system packages
 apt-get update
-# Remove deprecated packages and use python3-pip instead of python-pip
-# Remove omxplayer and use vlc instead
 apt-get install -y \
     python3-full \
     python3-pip \
@@ -81,3 +99,6 @@ systemctl enable raspberrycast
 systemctl start raspberrycast
 
 echo "Installation complete!"
+
+# Clean up the script
+cleanup 0
