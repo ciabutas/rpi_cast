@@ -11,8 +11,6 @@ volume = 0
 def launchvideo(url, config, sub=False):
     setState("2")
 
-    os.system("echo -n q > /tmp/cmd &")  # Kill previous instance of OMX
-
     if config["new_log"]:
         os.system("sudo fbi -T 1 -a --noverbose images/processing.jpg")
 
@@ -21,12 +19,10 @@ def launchvideo(url, config, sub=False):
 
     logger.debug("Full video URL fetched.")
 
-    thread = threading.Thread(target=playWithOMX, args=(out, sub,),
+    thread = threading.Thread(target=playWithVLC, args=(out, sub,),
             kwargs=dict(width=config["width"], height=config["height"],
                         new_log=config["new_log"]))
     thread.start()
-
-    os.system("echo . > /tmp/cmd &")  # Start signal for OMXplayer
 
 
 def queuevideo(url, config, onlyqueue=False):
@@ -39,11 +35,10 @@ def queuevideo(url, config, onlyqueue=False):
     if getState() == "0" and not onlyqueue:
         logger.info('No video currently playing, playing video instead of \
 adding to queue.')
-        thread = threading.Thread(target=playWithOMX, args=(out, False,),
+        thread = threading.Thread(target=playWithVLC, args=(out, False,),
             kwargs=dict(width=config["width"], height=config["height"],
                         new_log=config["new_log"]))
         thread.start()
-        os.system("echo . > /tmp/cmd &")  # Start signal for OMXplayer
     else:
         if out is not None:
             with open('video.queue', 'a') as f:
@@ -147,55 +142,6 @@ def playlistToQueue(url, config):
                 queuevideo(i['url'], config)
 
 
-def playWithOMX(url, sub, width="", height="", new_log=False):
-    logger.info("Starting OMXPlayer now.")
-
-    logger.info("Attempting to read resolution from configuration file.")
-
-    resolution = ""
-
-    if width or height:
-        resolution = " --win '0 0 {0} {1}'".format(width, height)
-
-    setState("1")
-    if sub:
-        os.system(
-            "omxplayer -b -r -o both '" + url + "'" + resolution +
-            " --vol " + str(volume) +
-            " --subtitles subtitle.srt < /tmp/cmd"
-        )
-    elif url is None:
-        pass
-    else:
-        os.system(
-            "omxplayer -b -r -o both '" + url + "' " + resolution + " --vol " +
-            str(volume) + " < /tmp/cmd"
-        )
-
-    if getState() != "2":  # In case we are again in the launchvideo function
-        setState("0")
-        with open('video.queue', 'r') as f:
-            # Check if there is videos in queue
-            first_line = f.readline().replace('\n', '')
-            if first_line != "":
-                logger.info("Starting next video in playlist.")
-                with open('video.queue', 'r') as fin:
-                    data = fin.read().splitlines(True)
-                with open('video.queue', 'w') as fout:
-                    fout.writelines(data[1:])
-                thread = threading.Thread(
-                    target=playWithOMX, args=(first_line, False,),
-                        kwargs=dict(width=width, height=height,
-                                    new_log=new_log),
-                )
-                thread.start()
-                os.system("echo . > /tmp/cmd &")  # Start signal for OMXplayer
-            else:
-                logger.info("Playlist empty, skipping.")
-                if new_log:
-                    os.system("sudo fbi -T 1 -a --noverbose images/ready.jpg")
-
-
 def playWithVLC(url, sub, width="", height="", new_log=False):
     logger.info("Starting VLC now.")
     
@@ -208,6 +154,28 @@ def playWithVLC(url, sub, width="", height="", new_log=False):
         os.system(
             f"cvlc --fullscreen '{url}'"
         )
+
+    if getState() != "2":  # In case we are again in the launchvideo function
+        setState("0")
+        with open('video.queue', 'r') as f:
+            # Check if there are videos in queue
+            first_line = f.readline().replace('\n', '')
+            if first_line != "":
+                logger.info("Starting next video in playlist.")
+                with open('video.queue', 'r') as fin:
+                    data = fin.read().splitlines(True)
+                with open('video.queue', 'w') as fout:
+                    fout.writelines(data[1:])
+                thread = threading.Thread(
+                    target=playWithVLC, args=(first_line, False,),
+                        kwargs=dict(width=width, height=height,
+                                    new_log=new_log),
+                )
+                thread.start()
+            else:
+                logger.info("Playlist empty, skipping.")
+                if new_log:
+                    os.system("sudo fbi -T 1 -a --noverbose images/ready.jpg")
 
 
 def setState(state):

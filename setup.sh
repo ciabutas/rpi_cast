@@ -9,7 +9,18 @@ fi
 
 # Install required system packages
 apt-get update
-apt-get install -y python3-full python3-venv git wget vlc libnss-mdns fbi python3-dev
+# Remove deprecated packages and use python3-pip instead of python-pip
+# Remove omxplayer and use vlc instead
+apt-get install -y \
+    python3-full \
+    python3-pip \
+    python3-venv \
+    python3-dev \
+    git \
+    wget \
+    vlc \
+    libnss-mdns \
+    fbi
 
 # Create virtual environment
 echo "Creating Python virtual environment..."
@@ -30,6 +41,19 @@ if [ ! -d "/home/$USER/RaspberryCast" ]; then
     su - $USER -c "git clone https://github.com/ciabutas/rpi_cast.git /home/$USER/RaspberryCast"
 fi
 
+# Update configuration to use VLC instead of omxplayer
+cat > /home/$USER/RaspberryCast/raspberrycast.conf << EOF
+{
+    "slow_mode": true,
+    "new_log": true,
+    "pi_hostname": "raspberrypi",
+    "width": "",
+    "height": "",
+    "subtitle_search": false,
+    "player": "vlc"
+}
+EOF
+
 # Create service file for systemd
 cat > /etc/systemd/system/raspberrycast.service << EOF
 [Unit]
@@ -47,6 +71,10 @@ Restart=always
 [Install]
 WantedBy=multi-user.target
 EOF
+
+# Set correct permissions
+chown -R $USER:$USER /home/$USER/RaspberryCast
+chmod -R 755 /home/$USER/RaspberryCast
 
 # Enable and start the service
 systemctl enable raspberrycast
