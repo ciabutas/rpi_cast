@@ -15,6 +15,10 @@ if [ $1 = "start" ]; then
 	fi
 	echo "Checking for updates."
 	git pull
+	echo "Setting up VLC control pipe."
+	if [ ! -e /tmp/cmd ]; then
+		mkfifo /tmp/cmd
+	fi
 	echo "Starting RaspberryCast server."
 	# Use the Python from virtual environment
 	/opt/raspberrycast_venv/bin/python server.py &

@@ -227,40 +227,35 @@ def queue():
 @app.route('/video')
 def video():
     control = request.query['control']
-    if control == "pause":
-        logger.info('Command : pause')
-        os.system("echo -n p > /tmp/cmd &")
+    # Map omxplayer commands to VLC commands
+    vlc_commands = {
+        "pause": "p",       # Same in VLC
+        "stop": "q",        # Same in VLC
+        "next": "q",        # Stop current video
+        "right": "f",       # Forward in VLC
+        "left": "r",        # Rewind in VLC
+        "longright": "shift+f",  # Long forward in VLC
+        "longleft": "shift+r"    # Long rewind in VLC
+    }
+    
+    if control in vlc_commands:
+        logger.info(f'Command: {control} (mapped to VLC: {vlc_commands[control]})')
+        os.system(f"echo -n {vlc_commands[control]} > /tmp/cmd &")
         return "1"
-    elif control in ["stop", "next"]:
-        logger.info('Command : stop video')
-        os.system("echo -n q > /tmp/cmd &")
-        return "1"
-    elif control == "right":
-        logger.info('Command : forward')
-        os.system("echo -n $'\x1b\x5b\x43' > /tmp/cmd &")
-        return "1"
-    elif control == "left":
-        logger.info('Command : backward')
-        os.system("echo -n $'\x1b\x5b\x44' > /tmp/cmd &")
-        return "1"
-    elif control == "longright":
-        logger.info('Command : long forward')
-        os.system("echo -n $'\x1b\x5b\x41' > /tmp/cmd &")
-        return "1"
-    elif control == "longleft":
-        logger.info('Command : long backward')
-        os.system("echo -n $'\x1b\x5b\x42' > /tmp/cmd &")
-        return "1"
+    else:
+        logger.error(f'Unknown command: {control}')
+        return "0"
 
 
 @app.route('/sound')
 def sound():
     vol = request.query['vol']
+    # Map volume commands to VLC
     if vol == "more":
-        logger.info('REMOTE: Command : Sound ++')
+        logger.info('REMOTE: Command: Sound ++')
         os.system("echo -n + > /tmp/cmd &")
     elif vol == "less":
-        logger.info('REMOTE: Command : Sound --')
+        logger.info('REMOTE: Command: Sound --')
         os.system("echo -n - > /tmp/cmd &")
     setVolume(vol)
     return "1"
